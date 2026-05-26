@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name=viewport content='width=device-width,initial-scale=1,user-scalable=0'> 
+  <title>💀 War – Grid Battle</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+
+    label {
+      font-size: 14px;
+    }
+
+    input[type="text"] {
+      width: 90px;
+    }
+
+    #board {
+      display: grid;
+      gap: 1px;
+      background: #333;
+      border: 2px solid #555;
+    }
+
+    .cell {
+      width: 22px;
+      height: 22px;
+      background: #222;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .cell.teamA {
+      background: #aa2222;
+    }
+
+    .cell.teamB {
+      background: #2244aa;
+    }
+
+    .cell.highlight {
+      outline: 2px solid #ff0;
+    }
+
+    #status {
+      margin-top: 10px;
+      min-height: 20px;
+      font-size: 14px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>War – Grid Battle</h1>
+  
+  <div id="status"></div>
+  <div id="board"></div>
+  
+
+  <div id="controls">
+    <label>
+      Formation:
+      <select id="formationSelect">
+        <option value="classic">Classic</option>
+        <option value="spread">Spread</option>
+        <option value="pyramid">Pyramid</option>
+      </select>
+    </label>
+
+    <label>
+      Team A Name:
+      <input type="text" id="teamAName" value="Red" />
+    </label>
+
+    <label>
+      Team A Color:
+      <input type="color" id="teamAColor" value="#cc0000" />
+    </label>
+
+    <label>
+      Team B Name:
+      <input type="text" id="teamBName" value="Blue" />
+    </label>
+
+    <label>
+      Team B Color:
+      <input type="color" id="teamBColor" value="#0044cc" />
+    </label>
+
+    <label>
+      <input type="checkbox" id="teamAAI" checked />
+      Team A is AI
+    </label>
+
+    <label>
+      <input type="checkbox" id="teamBAI" checked />
+      Team B is AI
+    </label>
+
+    <button id="restartBtn">Restart</button>
+  </div>
+
+  <script src="war.js"></script>
+</body>
+</html>
