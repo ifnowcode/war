@@ -25,6 +25,7 @@ let teamA = { name: "Red", color: "#cc0000" };
 let teamB = { name: "Blue", color: "#0044cc" };
 let warRollValue = null;
 
+let tracedebug = false;
 
 // --- TEMPLATES ---
 const TEMPLATES = {
@@ -72,13 +73,39 @@ const TEMPLATES = {
 };
 
 function createPieces(templateName = "classic") {
-  if (templateName === "pyramid") {
+  if (tracedebug) console.log("Template name", templateName);
+  if (templateName === "spear") {
     const template = createPyramidTemplate(9, WIDTH, HEIGHT);
     const hydrated = {
       teamA: template.teamA.map(p => ({ ...p, alive: true })),
       teamB: template.teamB.map(p => ({ ...p, alive: true }))
     };
-    console.log("TeamA -", hydrated.teamA, "TeamB -", hydrated.teamB);
+    if (tracedebug) console.log("TeamA -", hydrated.teamA, "TeamB -", hydrated.teamB);
+    return hydrated;
+  } else if (templateName === "pyramid") {
+    const template = createPyramidTemplate(19, WIDTH, HEIGHT);
+    const hydrated = {
+      teamA: template.teamA.map(p => ({ ...p, alive: true })),
+      teamB: template.teamB.map(p => ({ ...p, alive: true }))
+    };
+    if (tracedebug) console.log("TeamA -", hydrated.teamA, "TeamB -", hydrated.teamB);
+    return hydrated;
+  } else if (templateName === "battle") {
+    const template = createSquareTemplate(9, WIDTH, HEIGHT);
+    const hydrated = {
+      teamA: template.teamA.map(p => ({ ...p, alive: true })),
+      teamB: template.teamB.map(p => ({ ...p, alive: true }))
+    };
+    if (tracedebug) console.log("TeamA -", hydrated.teamA, "TeamB -", hydrated.teamB);
+    return hydrated;
+  } else
+    if (templateName === "war") {
+    const template = createSquareTemplate(19, WIDTH, HEIGHT);
+    const hydrated = {
+      teamA: template.teamA.map(p => ({ ...p, alive: true })),
+      teamB: template.teamB.map(p => ({ ...p, alive: true }))
+    };
+    if (tracedebug) console.log("TeamA -", hydrated.teamA, "TeamB -", hydrated.teamB);
     return hydrated;
   } else {
     const tplfn = TEMPLATES[templateName] || TEMPLATES.classic;
@@ -87,7 +114,7 @@ function createPieces(templateName = "classic") {
       teamA: template.teamA.map(p => ({ ...p, alive: true })),
       teamB: template.teamB.map(p => ({ ...p, alive: true }))
     };
-    console.log("TeamA -", hydrated.teamA, "TeamB -", hydrated.teamB);
+    if (tracedebug) console.log("TeamA -", hydrated.teamA, "TeamB -", hydrated.teamB);
     return hydrated;
   }
 }
@@ -128,6 +155,39 @@ function createPyramidTemplate(base_size, width, height) {
   return { teamA, teamB };
 }
 
+function createSquareTemplate(size, width, height) {
+  const half = Math.floor(size / 2);   // 9
+  const center = Math.floor(height / 2);
+
+  // Center vertically
+  const topRow = center - half;        // starting row
+  const bottomRow = center + half;     // ending row
+
+  const teamA = [];
+  const teamB = [];
+
+  // Team A starts one column from the left edge
+  const startA = 1;
+  const endA = startA + size - 1;      // 1 → 19
+
+  // Team B starts one column from the right edge
+  const endB = width - 2;
+  const startB = endB - (size - 1);    // width-20 → width-2
+
+  for (let r = topRow; r <= bottomRow; r++) {
+    // Team A block
+    for (let c = startA; c <= endA; c++) {
+      teamA.push({ r, c });
+    }
+
+    // Team B block
+    for (let c = startB; c <= endB; c++) {
+      teamB.push({ r, c });
+    }
+  }
+
+  return { teamA, teamB };
+}
 
 // --- INIT / RESTART ---
 function initBoard() {
@@ -258,11 +318,11 @@ function attemptMove(team, index, r, c) {
   const dr = Math.abs(piece.r - r);
   const dc = Math.abs(piece.c - c);
 
-  // Must be straight line
-  if (dr !== 0 && dc !== 0) return false;
-
-  // Must match roll
+  // Must match Manhattan distance
   if (dr + dc !== warRollValue) return false;
+
+  // Path must be clear (except final square)
+  if (!pathClearManhattan(piece.r, piece.c, r, c)) return false;
 
   const occ = board[r][c];
 
@@ -288,6 +348,26 @@ function attemptMove(team, index, r, c) {
 
   return true;
 }
+
+function pathClearManhattan(sr, sc, tr, tc) {
+  let r = sr;
+  let c = sc;
+
+  // Move vertically first
+  while (r !== tr) {
+    r += (tr > r ? 1 : -1);
+    if (board[r][c] !== null && !(r === tr && c === tc)) return false;
+  }
+
+  // Then horizontally
+  while (c !== tc) {
+    c += (tc > c ? 1 : -1);
+    if (board[r][c] !== null && !(r === tr && c === tc)) return false;
+  }
+
+  return true;
+}
+
 
 // --- TURN / WIN ---
 function switchTurn() {
@@ -333,13 +413,19 @@ function maybeRunAI() {
 }
 
 function aiTurn(team) {
-  aiTurnSwarm(team, {
-    aggression: 1.4,
-    cohesion: 2.0,
-    separation: 1.0,
-    randomness: 0.2
-  });
-
+  //console.log(!teamAAICheck.checked, !teamBAICheck.checked);
+  if (!teamAAICheck.checked || !teamBAICheck.checked) {
+    //console.log("aiTurnSimple", team);
+    aiTurnComplex(team);
+  } else {
+    //console.log("aiTurnSwarm", team);
+    aiTurnSwarm(team, {
+      aggression: 10, // original 1.4
+      cohesion: 0.2,  // original 2.0
+      separation: 1.0,
+      randomness: 0.2 // original 0.2
+    });
+  }
 }
 
 function aiTurnSimple(team) {
@@ -356,16 +442,10 @@ function aiTurnSimple(team) {
   // 1. If can capture adjacent enemy, do it.
   // 2. Else move 1 step toward nearest enemy.
   for (const { p, i } of myPieces) {
-    const dirs = [
-      [ warRollValue, 0],
-      [-warRollValue, 0],
-      [0,  warRollValue],
-      [0, -warRollValue]
-    ];
+    const targets = manhattanTargets(p, warRollValue);
 
-    for (const [dr, dc] of dirs) {
-      const rr = p.r + dr;
-      const cc = p.c + dc;
+    for (const [rr, cc] of targets) {
+
       if (rr < 0 || rr >= HEIGHT || cc < 0 || cc >= WIDTH) continue;
 
       const occ = board[rr][cc];
@@ -390,16 +470,10 @@ function aiTurnSimple(team) {
   const enemyPieces = pieces[enemyTeam].filter(p => p.alive);
 
   for (const { p, i } of myPieces) {
-    const dirs = [
-      [ warRollValue, 0],
-      [-warRollValue, 0],
-      [0,  warRollValue],
-      [0, -warRollValue]
-    ];
+    const targets = manhattanTargets(p, warRollValue);
 
-    for (const [dr, dc] of dirs) {
-      const rr = p.r + dr;
-      const cc = p.c + dc;
+    for (const [rr, cc] of targets) {
+
       if (rr < 0 || rr >= HEIGHT || cc < 0 || cc >= WIDTH) continue;
 
       const occ = board[rr][cc];
@@ -434,7 +508,7 @@ function aiTurnSimple(team) {
   }
 }
 
-function aiTurnSwarm(team, {
+function aiTurnComplex(team, {
   aggression = 1.2,   // pull toward enemies
   cohesion  = 0.8,    // pull toward allies
   separation = 1.0,   // push away from overcrowding
@@ -479,17 +553,9 @@ function aiTurnSwarm(team, {
   let bestScore = -Infinity;
 
   for (const { p, i } of myPieces) {
-    const dirs = [
-      [ warRollValue, 0],
-      [-warRollValue, 0],
-      [0,  warRollValue],
-      [0, -warRollValue]
-    ];
+    const targets = manhattanTargets(p, warRollValue);
 
-    for (const [dr, dc] of dirs) {
-      const rr = p.r + dr;
-      const cc = p.c + dc;
-
+    for (const [rr, cc] of targets) {
       // Bounds
       if (rr < 0 || rr >= HEIGHT || cc < 0 || cc >= WIDTH) continue;
 
@@ -548,6 +614,134 @@ function aiTurnSwarm(team, {
   }
 }
 
+function aiTurnSwarm(team, {
+  aggression = 1.2,
+  cohesion  = 0.8,
+  separation = 1.0,
+  randomness = 0.25,
+  captureBonus = 1000
+} = {}) {
+
+  if (gameOver) return;
+
+  const enemyTeam = team === "teamA" ? "teamB" : "teamA";
+
+  const myPieces = pieces[team]
+    .map((p, i) => ({ p, i }))
+    .filter(x => x.p.alive);
+
+  const enemyPieces = pieces[enemyTeam].filter(p => p.alive);
+
+  if (myPieces.length === 0 || enemyPieces.length === 0) {
+    checkWin();
+    return;
+  }
+
+  // Roll for this AI turn
+  warRollValue = Math.floor(Math.random() * 6) + 1;
+  const teamName = team === "teamA" ? teamA.name : teamB.name;
+  statusEl.textContent = `${teamName} (AI) must move ${warRollValue} spaces.`;
+
+  // --- PRECOMPUTE CENTROIDS ---
+  function centroid(list) {
+    let sx = 0, sy = 0;
+    for (const p of list) {
+      sx += p.c;
+      sy += p.r;
+    }
+    return { cx: sx / list.length, cy: sy / list.length };
+  }
+
+  const allyCentroid  = centroid(myPieces.map(x => x.p));
+  const enemyCentroid = centroid(enemyPieces);
+
+  // --- MOVE EVERY PIECE ONCE ---
+  for (const { p, i } of myPieces) {
+
+    const targets = manhattanTargets(p, warRollValue);
+
+    let bestMove = null;
+    let bestScore = -Infinity;
+
+    for (const [rr, cc] of targets) {
+
+      if (rr < 0 || rr >= HEIGHT || cc < 0 || cc >= WIDTH) continue;
+
+      const occ = board[rr][cc];
+      if (occ === team) continue; // cannot land on own piece
+
+      // Path must be clear
+      if (!pathClearManhattan(p.r, p.c, rr, cc)) continue;
+
+      // --- SWARM SCORING ---
+      let score = 0;
+
+      // 1. Aggression: move toward enemy centroid
+      const dEnemy = Math.abs(enemyCentroid.cy - rr) + Math.abs(enemyCentroid.cx - cc);
+      score += aggression * (20 - dEnemy);
+
+      // 2. Cohesion: move toward ally centroid
+      const dAlly = Math.abs(allyCentroid.cy - rr) + Math.abs(allyCentroid.cx - cc);
+      score += cohesion * (20 - dAlly);
+
+      // 3. Separation: avoid overcrowding
+      for (const ap of myPieces.map(x => x.p)) {
+        if (ap === p) continue;
+        const d = Math.abs(ap.r - rr) + Math.abs(ap.c - cc);
+        if (d < 3) score -= separation * (3 - d) * 5;
+      }
+
+      // 4. Captures
+      if (occ === enemyTeam) score += captureBonus;
+
+      // 5. Randomness
+      score += (Math.random() - 0.5) * randomness * 10;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = { r: rr, c: cc };
+      }
+    }
+
+    // Execute this piece’s best move
+    if (bestMove) {
+      attemptMove(team, i, bestMove.r, bestMove.c);
+    }
+  }
+
+  // After all pieces move
+  render();
+  checkWin();
+
+  if (!gameOver) {
+    switchTurn();
+    maybeRunAI();
+  }
+}
+
+function manhattanTargets(p, roll) {
+  const targets = [];
+  for (let dr = -roll; dr <= roll; dr++) {
+    const dc = roll - Math.abs(dr);
+    const r1 = p.r + dr;
+    const c1 = p.c + dc;
+    const r2 = p.r + dr;
+    const c2 = p.c - dc;
+
+    if (dc === 0) {
+      // Only one horizontal option
+      if (r1 >= 0 && r1 < HEIGHT && c1 >= 0 && c1 < WIDTH)
+        targets.push([r1, c1]);
+    } else {
+      // Two symmetric options
+      if (r1 >= 0 && r1 < HEIGHT && c1 >= 0 && c1 < WIDTH)
+        targets.push([r1, c1]);
+      if (r2 >= 0 && r2 < HEIGHT && c2 >= 0 && c2 < WIDTH)
+        targets.push([r2, c2]);
+    }
+  }
+  return targets;
+}
 
 
 // --- START ---
